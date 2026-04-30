@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart City Parking - Engineering Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0f172a;
+            --accent: #3b82f6;
+            --danger: #ef4444;
+            --success: #10b981;
+            --bg: #f1f5f9;
+        }
+
+        body { font-family: 'Cairo', sans-serif; background: var(--bg); margin: 0; padding: 0; }
+        .header { background: var(--primary); color: white; padding: 20px; text-align: center; border-radius: 0 0 25px 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .container { max-width: 800px; margin: auto; padding: 20px; }
+
+        /* كروت الحساسات والبيانات */
+        .sensor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; }
+        .card { background: white; padding: 15px; border-radius: 18px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; border: 1px solid #e2e8f0; }
+        .val { font-size: 22px; font-weight: bold; color: var(--accent); display: block; }
+        .label { font-size: 13px; color: #64748b; }
+
+        /* نظام القفل (Login) */
+        #loginOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95); display: flex; align-items: center;
+            justify-content: center; z-index: 1000; color: white; display: none;
+        }
+        .login-box { background: #1e293b; padding: 30px; border-radius: 20px; text-align: center; width: 80%; max-width: 350px; }
+        .pass-input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 10px; border: none; text-align: center; font-size: 18px; }
+
+        /* الجدول */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th { background: #f8fafc; color: #64748b; padding: 10px; border-bottom: 2px solid #edf2f7; }
+        td { padding: 10px; border-bottom: 1px solid #edf2f7; color: #1e293b; }
+
+        .nav-bar { display: flex; background: white; border-radius: 15px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .nav-item { flex: 1; padding: 15px; border: none; background: none; font-family: 'Cairo'; cursor: pointer; font-weight: bold; }
+        .nav-item.active { background: var(--accent); color: white; }
+
+        .fire-alert { padding: 10px; border-radius: 10px; font-weight: bold; margin-top: 10px; text-align: center; }
+        .no-fire { background: #dcfce7; color: #166534; }
+        .fire-active { background: #fee2e2; color: #991b1b; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% {opacity: 1;} 50% {opacity: 0.5;} 100% {opacity: 1;} }
+        
+        .btn-main { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 10px; cursor: pointer; width: 100%; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div id="loginOverlay">
+    <div class="login-box">
+        <h3>دخول المهندس 🛠️</h3>
+        <input type="password" id="adminPass" class="pass-input" placeholder="****">
+        <button class="btn-main" onclick="checkPassword()">دخول</button>
+        <button style="background:none; color:white; border:none; margin-top:10px; cursor:pointer;" onclick="goBackToUser()">إلغاء</button>
+    </div>
+</div>
+
+<div class="header">
+    <h2 style="margin:0">Smart Garage Pro</h2>
+    <div id="dayNightStatus" style="font-size: 14px; margin-top: 5px;">📍 جاري التحديد...</div>
+</div>
+
+<div class="container">
+    <div class="nav-bar">
+        <button id="userTab" class="nav-item active" onclick="showUser()">الزائر (دفع)</button>
+        <button id="adminTab" class="nav-item" onclick="askForPass()">المهندس (المراقبة)</button>
+    </div>
+
+    <div id="userSection">
+        <div class="card" style="margin-bottom: 15px;">
+            <span class="label">الأماكن المتاحة الآن</span>
+            <span id="parkingSlots" class="val">--</span>
+        </div>
+        <div class="card">
+            <h3>دفع رسوم الخروج 💳</h3>
+            <div style="display:flex; gap:10px; direction:ltr; margin-bottom:15px;">
+                <input type="number" id="pNum" placeholder="123" style="flex:1; padding:10px; border-radius:8px; border:1px solid #ddd;">
+                <input type="text" id="pLet" placeholder="أ ب ج" style="flex:1; padding:10px; border-radius:8px; border:1px solid #ddd;">
+            </div>
+            <button class="btn-main" onclick="calculateInvoice()">احسب الفاتورة</button>
+            <div id="invoiceResult"></div>
+        </div>
+    </div>
+
+    <div id="adminSection" style="display: none;">
+        <div class="sensor-grid">
+            <div class="card"><span class="label">🌡️ الحرارة</span><span id="tempVal" class="val">--</span></div>
+            <div class="card"><span class="label">💧 الرطوبة</span><span id="humVal" class="val">--</span></div>
+            <div class="card"><span class="label">💨 الغاز</span><span id="gasVal" class="val">--</span></div>
+            <div class="card"><span class="label">💡 LDR</span><span id="ldrVal" class="val">--</span></div>
+        </div>
+        <div id="fireStatus" class="fire-alert no-fire">حالة الحريق: آمن ✅</div>
+        
+        <div class="card" style="margin-top: 15px;">
+            <h4 style="margin:0 0 10px 0; text-align: right;">🎥 سجل آخر السيارات</h4>
+            <table>
+                <thead>
+                    <tr><th>اللوحة</th><th>النوع</th><th>الوقت</th></tr>
+                </thead>
+                <tbody id="carLogs">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const PASS = "123";
+
+    window.onload = () => { startGlobalUpdates(); };
+
+    function askForPass() { document.getElementById('loginOverlay').style.display = 'flex'; }
+    function checkPassword() {
+        if(document.getElementById('adminPass').value === PASS) {
+            document.getElementById('loginOverlay').style.display = 'none';
+            showAdmin();
+        } else { alert("خطأ!"); }
+    }
+    function goBackToUser() { document.getElementById('loginOverlay').style.display = 'none'; showUser(); }
+    function showUser() {
+        document.getElementById('userSection').style.display = 'block';
+        document.getElementById('adminSection').style.display = 'none';
+        document.getElementById('userTab').classList.add('active');
+        document.getElementById('adminTab').classList.remove('active');
+    }
+    function showAdmin() {
+        document.getElementById('userSection').style.display = 'none';
+        document.getElementById('adminSection').style.display = 'block';
+        document.getElementById('adminTab').classList.add('active');
+        document.getElementById('userTab').classList.remove('active');
+    }
+
+    function startGlobalUpdates() {
+        setInterval(() => {
+            // تحديث الحساسات والوقت (تحدث في الخلفية دائماً)
+            let lux = Math.floor(Math.random() * 1000);
+            document.getElementById('dayNightStatus').innerText = lux > 500 ? "☀️ الوقت الآن: نهاراً" : "🌙 الوقت الآن: ليلاً";
+            document.getElementById('parkingSlots').innerText = Math.floor(Math.random() * 5 + 1) + " أماكن";
+            
+            if(document.getElementById('adminSection').style.display === 'block') {
+                document.getElementById('tempVal').innerText = (25 + Math.random()*3).toFixed(1) + "°C";
+                document.getElementById('humVal').innerText = (40 + Math.random()*5).toFixed(1) + "%";
+                let gas = Math.floor(Math.random() * 300);
+                document.getElementById('gasVal').innerText = gas + " ppm";
+                document.getElementById('ldrVal').innerText = lux + " Lux";
+                
+                let fire = document.getElementById('fireStatus');
+                if(gas > 250) { fire.innerText = "🔥 خطر حريق!"; fire.className="fire-alert fire-active"; }
+                else { fire.innerText = "حالة الحريق: آمن ✅"; fire.className="fire-alert no-fire"; }
+            }
+        }, 3000);
+
+        // محاكاة جدول السيارات (يحدث كل 10 ثواني كأن سيارة دخلت)
+        setInterval(updateCarLogs, 10000);
+        updateCarLogs(); 
+    }
+
+    function updateCarLogs() {
+        const plates = ["أ ب ج 123", "س ص ع 456", "ل ك م 789"];
+        const types = ["زائر", "مالك"];
+        const time = new Date().toLocaleTimeString('ar-EG');
+        const row = `<tr><td>${plates[Math.floor(Math.random()*3)]}</td><td>${types[Math.floor(Math.random()*2)]}</td><td>${time}</td></tr>`;
+        document.getElementById('carLogs').innerHTML = row + document.getElementById('carLogs').innerHTML;
+        // الاحتفاظ بآخر 3 سجلات فقط لجمال الشكل
+        if(document.getElementById('carLogs').rows.length > 3) document.getElementById('carLogs').deleteRow(3);
+    }
+
+    function calculateInvoice() {
+        const letters = document.getElementById('pLet').value;
+        const numbers = document.getElementById('pNum').value;
+        if (!letters || !numbers) return alert("اكمل البيانات");
+        const price = (Math.random() * 50 + 10).toFixed(2);
+        document.getElementById('invoiceResult').innerHTML = `
+            <div style="background:#f1f5f9; padding:10px; border-radius:10px; margin-top:10px; border-right:4px solid #3b82f6;">
+                إيصال السيارة: <strong>${letters} ${numbers}</strong><br>
+                المبلغ المطلوب: <strong style="color:#10b981;">${price} ج.م</strong>
+            </div>`;
+    }
+</script>
+</body>
+</html>
