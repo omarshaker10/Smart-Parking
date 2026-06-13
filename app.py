@@ -1,34 +1,39 @@
-from flask import Flask, render_template, jsonify
-import random
+from flask import Flask, render_template, request, jsonify
 from datetime import datetime
 
 app = Flask(__name__)
 
+# الخزنة المؤقتة للبيانات الحقيقية القادمة من الراسبري باي
+sensor_data = {
+    "slot_is_busy": False,
+    "distance_cm": 0.0,
+    "temperature": 0.0,
+    "humidity": 0.0,
+    "gas_percentage": 0.0,
+    "ldr_is_night": False,
+    "motion_detected": False,
+    "flame_detected": False,
+    "vibration_detected": False
+}
+
 @app.route('/')
 def home():
-    # لازم نبعت قاموس (Dictionary) فاضي أو فيه قيم مبدئية 
-    # عشان الـ HTML ميزعلش أول ما يفتح
-    initial_data = {
-        'slots': "جاري التحميل...",
-        'solar': "0%",
-        'status': "برجاء الانتظار",
-        'plate_number': "---",
-        'type': "---",
-        'entry_time': "---"
-    }
-    return render_template('index.html', data=initial_data)
+    return render_template('index.html')
 
-@app.route('/get_latest_car')
-def get_latest_car():
-    plates = ["أ ب ج 123", "س ص ع 456", "ط ي ك 789"]
-    types = ["Owner", "Visitor"]
-    mock_data = {
-        'plate_number': random.choice(plates),
-        'type': random.choice(types),
-        'entry_time': datetime.now().strftime("%I:%M:%S %p")
-    }
-    return jsonify(mock_data)
+# 1. مسار الاستقبال من الراسبري باي (POST)
+@app.route('/api/update', methods=['POST'])
+def update_data():
+    global sensor_data
+    data = request.get_json()
+    if data:
+        sensor_data.update(data)
+        return jsonify({"status": "success"}), 200
+    return jsonify({"status": "error", "message": "No data"}), 400
+
+# 2. مسار الإرسال للموقع (GET) - بديل الـ mock_data
+@app.route('/api/status', methods=['GET'])
+def get_status():
+    return jsonify(sensor_data), 200
 
 if __name__ == '__main__':
-    # إضافة host='0.0.0.0' بتخلي السيرفر متاح لأي جهاز معاك على الشبكة
     app.run(host='0.0.0.0', port=5000, debug=True)
