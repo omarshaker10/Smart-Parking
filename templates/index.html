@@ -3,51 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Garage Pro</title>
+    <title>Smart City Parking - Engineering Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root { --primary: #0f172a; --accent: #3b82f6; --danger: #ef4444; --success: #10b981; --bg: #f1f5f9; }
         body { font-family: 'Cairo', sans-serif; background: var(--bg); margin: 0; padding: 0; }
-        .header { background: var(--primary); color: white; padding: 20px; text-align: center; border-radius: 0 0 25px 25px; }
+        .header { background: var(--primary); color: white; padding: 20px; text-align: center; border-radius: 0 0 25px 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .container { max-width: 800px; margin: auto; padding: 20px; }
-        .card { background: white; padding: 15px; border-radius: 18px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 15px; text-align: center; }
+        .sensor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; }
+        .card { background: white; padding: 15px; border-radius: 18px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; border: 1px solid #e2e8f0; }
         .val { font-size: 22px; font-weight: bold; color: var(--accent); display: block; }
-        .alert-box { padding: 12px; border-radius: 12px; margin-top: 10px; font-weight: bold; text-align: center; }
-        .safe { background: #dcfce7; color: #166534; }
-        .danger { background: #fee2e2; color: #991b1b; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% {opacity: 1;} 50% {opacity: 0.5;} 100% {opacity: 1;} }
+        .label { font-size: 13px; color: #64748b; }
+        #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.95); display: flex; align-items: center; justify-content: center; z-index: 1000; color: white; display: none; }
+        .login-box { background: #1e293b; padding: 30px; border-radius: 20px; text-align: center; width: 80%; max-width: 350px; }
+        .pass-input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 10px; border: none; text-align: center; font-size: 18px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th { background: #f8fafc; color: #64748b; padding: 10px; border-bottom: 2px solid #edf2f7; }
+        td { padding: 10px; border-bottom: 1px solid #edf2f7; color: #1e293b; }
         .nav-bar { display: flex; background: white; border-radius: 15px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .nav-item { flex: 1; padding: 15px; border: none; background: none; font-family: 'Cairo'; cursor: pointer; font-weight: bold; }
         .nav-item.active { background: var(--accent); color: white; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        td { padding: 8px; border-bottom: 1px solid #edf2f7; text-align: center; }
+        .fire-alert { padding: 10px; border-radius: 10px; font-weight: bold; margin-top: 10px; text-align: center; }
+        .no-fire { background: #dcfce7; color: #166534; }
+        .fire-active { background: #fee2e2; color: #991b1b; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% {opacity: 1;} 50% {opacity: 0.5;} 100% {opacity: 1;} }
+        .btn-main { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 10px; cursor: pointer; width: 100%; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div class="header"><h2>Smart Garage Pro</h2></div>
+<div id="loginOverlay">
+    <div class="login-box">
+        <h3>دخول المهندس 🛠️</h3>
+        <input type="password" id="adminPass" class="pass-input" placeholder="****">
+        <button class="btn-main" onclick="checkPassword()">دخول</button>
+        <button style="background:none; color:white; border:none; margin-top:10px; cursor:pointer;" onclick="goBackToUser()">إلغاء</button>
+    </div>
+</div>
+
+<div class="header">
+    <h2 style="margin:0">Smart Garage Pro</h2>
+    <div id="dayNightStatus" style="font-size: 14px; margin-top: 5px;">📍 جاري الاتصال...</div>
+</div>
 
 <div class="container">
     <div class="nav-bar">
-        <button id="userTab" class="nav-item active" onclick="showSection('user')">الزائر</button>
-        <button id="adminTab" class="nav-item" onclick="showSection('admin')">المهندس</button>
+        <button id="userTab" class="nav-item active" onclick="showUser()">الزائر (دفع)</button>
+        <button id="adminTab" class="nav-item" onclick="askForPass()">المهندس (المراقبة)</button>
     </div>
 
     <div id="userSection">
+        <div class="card" style="margin-bottom: 15px;">
+            <span class="label">حالة المكان</span>
+            <span id="parkingSlots" class="val">جاري التحميل...</span>
+        </div>
         <div class="card">
-            <span>الأماكن المتاحة</span>
-            <span id="parkingSlots" class="val">4/4 أماكن</span>
+            <h3>دفع رسوم الخروج 💳</h3>
+            <div style="display:flex; gap:10px; direction:ltr; margin-bottom:15px;">
+                <input type="number" id="pNum" placeholder="123" style="flex:1; padding:10px; border-radius:8px; border:1px solid #ddd;">
+                <input type="text" id="pLet" placeholder="أ ب ج" style="flex:1; padding:10px; border-radius:8px; border:1px solid #ddd;">
+            </div>
+            <button class="btn-main" onclick="calculateInvoice()">احسب الفاتورة</button>
+            <div id="invoiceResult"></div>
         </div>
     </div>
 
     <div id="adminSection" style="display: none;">
-        <div id="gasStatus" class="alert-box safe">حالة الغاز: آمن ✅</div>
-        <div id="fireStatus" class="alert-box safe">حالة الحريق: آمن ✅</div>
-        <div id="envStatus" class="alert-box safe">الحرارة والرطوبة: آمن ✅</div>
+        <div class="sensor-grid">
+            <div class="card"><span class="label">🌡️ الحرارة</span><span id="tempVal" class="val">--</span></div>
+            <div class="card"><span class="label">💧 الرطوبة</span><span id="humVal" class="val">--</span></div>
+            <div class="card"><span class="label">💨 الغاز</span><span id="gasVal" class="val">--</span></div>
+            <div class="card"><span class="label">💡 LDR</span><span id="ldrVal" class="val">--</span></div>
+        </div>
+        <div id="fireStatus" class="fire-alert no-fire">حالة الحريق: آمن ✅</div>
         
-        <div class="card">
-            <h4>🎥 سجل حركة السيارات</h4>
+        <div class="card" style="margin-top: 15px;">
+            <h4 style="margin:0 0 10px 0; text-align: right;">🎥 سجل آخر السيارات</h4>
             <table>
+                <thead><tr><th>اللوحة</th><th>النوع</th><th>الوقت</th></tr></thead>
                 <tbody id="carLogs"></tbody>
             </table>
         </div>
@@ -55,62 +88,71 @@
 </div>
 
 <script>
-    let toggleCycle = 0;
-    let lastSlotStatus = null;
+    const PASS = "123";
 
+    // دالة جلب البيانات من السيرفر وتحديث الواجهة
     async function fetchLiveData() {
         try {
-            const res = await fetch('/api/status');
-            const data = await res.json();
+            const response = await fetch('/api/status');
+            const data = await response.json();
 
-            // 1. الأماكن (من 4)
-            let slots = data.slot_is_busy ? "3/4" : "4/4";
-            document.getElementById('parkingSlots').innerText = slots + " أماكن";
+            // تحديث البيانات الحقيقية
+            document.getElementById('parkingSlots').innerText = data.slot_is_busy ? "ممتلئ (مشغول)" : "متاح";
+            document.getElementById('tempVal').innerText = data.temperature + "°C";
+            document.getElementById('humVal').innerText = data.humidity + "%";
+            document.getElementById('gasVal').innerText = data.gas_percentage + " ppm";
+            document.getElementById('ldrVal').innerText = data.ldr_is_night ? "ليل" : "نهار";
+            document.getElementById('dayNightStatus').innerText = data.ldr_is_night ? "🌙 الوقت الآن: ليلاً" : "☀️ الوقت الآن: نهاراً";
 
-            // 2. سجل السيارات (تحديث تلقائي)
-            if (lastSlotStatus !== null && data.slot_is_busy !== lastSlotStatus) {
-                let logs = document.getElementById('carLogs');
-                let action = data.slot_is_busy ? "دخول سيارة" : "خروج سيارة";
-                logs.innerHTML = `<tr><td>${action}</td><td>${new Date().toLocaleTimeString()}</td></tr>` + logs.innerHTML;
+            // تحديث حالة الحريق
+            let fire = document.getElementById('fireStatus');
+            if(data.flame_detected) { 
+                fire.innerText = "🔥 خطر حريق!"; 
+                fire.className="fire-alert fire-active"; 
+            } else { 
+                fire.innerText = "حالة الحريق: آمن ✅"; 
+                fire.className="fire-alert no-fire"; 
             }
-            lastSlotStatus = data.slot_is_busy;
-
-            // 3. الغاز (نسبة مئوية)
-            let gasPercent = ((data.gas_percentage / 500) * 100).toFixed(1);
-            let gasDiv = document.getElementById('gasStatus');
-            if(gasPercent > 30) {
-                gasDiv.innerHTML = `⚠️ خطر: الغاز ${gasPercent}%`;
-                gasDiv.className = "alert-box danger";
-            } else {
-                gasDiv.innerHTML = `حالة الغاز: آمن (${gasPercent}%) ✅`;
-                gasDiv.className = "alert-box safe";
-            }
-
-            // 4. الحريق
-            let fireDiv = document.getElementById('fireStatus');
-            if(data.flame_detected) {
-                fireDiv.innerText = "🔥 خطر: حريق مكتشف!";
-                fireDiv.className = "alert-box danger";
-            } else {
-                fireDiv.innerText = "حالة الحريق: آمن ✅";
-                fireDiv.className = "alert-box safe";
-            }
-
-            // 5. الحرارة والرطوبة (تظهر بالتناوب)
-            let envDiv = document.getElementById('envStatus');
-            envDiv.innerText = (toggleCycle % 2 === 0) ? `🌡️ الحرارة: ${data.temperature}°C` : `💧 الرطوبة: ${data.humidity}%`;
-            toggleCycle++;
-
-        } catch (e) { console.error("Error", e); }
+        } catch (e) { console.error("Error updating data", e); }
     }
 
-    function showSection(s) {
-        document.getElementById('userSection').style.display = (s === 'user') ? 'block' : 'none';
-        document.getElementById('adminSection').style.display = (s === 'admin') ? 'block' : 'none';
-    }
-
+    // تحديث البيانات تلقائياً كل ثانيتين
     setInterval(fetchLiveData, 2000);
     window.onload = fetchLiveData;
+
+    // دوال التنقل
+    function askForPass() { document.getElementById('loginOverlay').style.display = 'flex'; }
+    function checkPassword() {
+        if(document.getElementById('adminPass').value === PASS) {
+            document.getElementById('loginOverlay').style.display = 'none';
+            showAdmin();
+        } else { alert("خطأ!"); }
+    }
+    function goBackToUser() { document.getElementById('loginOverlay').style.display = 'none'; showUser(); }
+    function showUser() {
+        document.getElementById('userSection').style.display = 'block';
+        document.getElementById('adminSection').style.display = 'none';
+        document.getElementById('userTab').classList.add.apply(document.getElementById('userTab').classList, ['active']);
+        document.getElementById('adminTab').classList.remove('active');
+    }
+    function showAdmin() {
+        document.getElementById('userSection').style.display = 'none';
+        document.getElementById('adminSection').style.display = 'block';
+        document.getElementById('adminTab').classList.add('active');
+        document.getElementById('userTab').classList.remove('active');
+    }
+
+    function calculateInvoice() {
+        const letters = document.getElementById('pLet').value;
+        const numbers = document.getElementById('pNum').value;
+        if (!letters || !numbers) return alert("اكمل البيانات");
+        const price = (Math.random() * 50 + 10).toFixed(2);
+        document.getElementById('invoiceResult').innerHTML = `
+            <div style="background:#f1f5f9; padding:10px; border-radius:10px; margin-top:10px; border-right:4px solid #3b82f6;">
+                إيصال السيارة: <strong>${letters} ${numbers}</strong><br>
+                المبلغ المطلوب: <strong style="color:#10b981;">${price} ج.م</strong>
+            </div>`;
+    }
 </script>
 </body>
 </html>
