@@ -103,8 +103,8 @@
             
             document.getElementById('tempVal').innerText = latestData.temperature + "°C";
             document.getElementById('humVal').innerText = latestData.humidity + "%";
-            // تعديل عرض الغاز ليكون نسبة مئوية
-            document.getElementById('gasVal').innerText = latestData.gas_percentage + "%";
+            // تعديل عرض الغاز ليكون نسبة مئوية برقم عشري واحد
+            document.getElementById('gasVal').innerText = Number(latestData.gas_percentage).toFixed(1) + "%";
             document.getElementById('ldrVal').innerText = latestData.ldr_is_night ? "ليل" : "نهار";
             document.getElementById('dayNightStatus').innerText = latestData.ldr_is_night ? "🌙 الوقت الآن: ليلاً" : "☀️ الوقت الآن: نهاراً";
 
@@ -116,6 +116,7 @@
     function updateStatusDisplay() {
         if (!latestData) return;
         let statusBanner = document.getElementById('fireStatus');
+        let formattedGas = Number(latestData.gas_percentage).toFixed(1);
 
         // أولاً: فحص شروط الخطر لكسر التبديل التلقائي وإظهار نوع الخطر فوراً
         if (latestData.flame_detected) { 
@@ -124,7 +125,7 @@
             return;
         } 
         if (latestData.gas_percentage > 30) { 
-            statusBanner.innerText = `⚠️ خطر غاز مرتفع! (${latestData.gas_percentage}%)`; 
+            statusBanner.innerText = `⚠️ خطر غاز مرتفع! (${formattedGas}%)`; 
             statusBanner.className = "fire-alert fire-active"; 
             return;
         }
@@ -132,7 +133,7 @@
         // ثانياً: في حالة الأمان التام، يتم التبديل العادي كل ثانيتين
         statusBanner.className = "fire-alert no-fire"; 
         if (currentStatusStage === 0) {
-            statusBanner.innerText = `حالة الغاز: آمن (${latestData.gas_percentage}%) ✅`;
+            statusBanner.innerText = `حالة الغاز: آمن (${formattedGas}%) ✅`;
         } else if (currentStatusStage === 1) {
             statusBanner.innerText = "حالة الحريق: آمن ✅";
         } else if (currentStatusStage === 2) {
